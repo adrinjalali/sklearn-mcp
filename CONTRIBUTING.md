@@ -15,7 +15,7 @@ This project uses `pixi` for environment management. To set up your development 
 
 We follow these coding standards:
 
-- Code formatting with `black` (line length of 88 characters)
+- Code formatting with `ruff format` (line length of 88 characters)
 - Linting with `ruff`
 - Documentation with docstrings (following Google style)
 - Type hints for all function signatures
