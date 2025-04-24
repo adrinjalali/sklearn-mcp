@@ -9,7 +9,13 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from ds_mcp.core.config import settings
-from ds_mcp.routers import data_prep, feature_engineering, modeling, evaluation
+from ds_mcp.routers import (
+    data_prep,
+    feature_engineering,
+    modeling,
+    evaluation,
+    workflow,
+)
 
 
 # Initialize FastAPI app
@@ -39,6 +45,7 @@ app.include_router(
 )
 app.include_router(modeling.router, prefix="/api/modeling", tags=["Modeling"])
 app.include_router(evaluation.router, prefix="/api/evaluation", tags=["Evaluation"])
+app.include_router(workflow.router, prefix="/api/workflow", tags=["Workflow"])
 
 
 class HealthResponse(BaseModel):
@@ -87,6 +94,26 @@ async def mcp_init(request: MCPInitRequest) -> MCPInitResponse:
             "description": "MCP server for data science best practices",
         },
         tools=[
+            {
+                "name": "get-workflow-guidance",
+                "description": "Get guidance on best practices of writing a data science / machine learning task",
+                "parameters": {
+                    "task_description": {
+                        "type": "string",
+                        "description": "Description of the data science task",
+                    },
+                    "data_type": {
+                        "type": "string",
+                        "description": "Type of data (e.g., tabular, text, image)",
+                        "default": "tabular",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Additional context about the task",
+                        "default": "",
+                    },
+                },
+            },
             {
                 "name": "get-data-prep-guidance",
                 "description": "Get guidance on data preparation best practices",
@@ -167,7 +194,25 @@ async def mcp_run(request: MCPRunRequest) -> MCPRunResponse:
 
     result = {"error": f"Tool {request.toolName} not implemented yet"}
 
-    if request.toolName == "get-data-prep-guidance":
+    if request.toolName == "get-workflow-guidance":
+        # Convert parameters to match our router endpoint
+        task_description = request.parameters.get("task_description", "")
+        data_type = request.parameters.get("data_type", "tabular")
+        context = request.parameters.get("context", None)
+
+        # Create a request object for our existing endpoint
+        from ds_mcp.routers.workflow import WorkflowRequest
+
+        req = WorkflowRequest(
+            task_description=task_description, data_type=data_type, context=context
+        )
+
+        # Call our existing endpoint logic
+        from ds_mcp.routers.workflow import get_workflow_guidance
+
+        result = await get_workflow_guidance(req)
+
+    elif request.toolName == "get-data-prep-guidance":
         # Convert parameters to match our router endpoint
         data_type = request.parameters.get("data_type", "tabular")
         language = request.parameters.get("language", "python")
