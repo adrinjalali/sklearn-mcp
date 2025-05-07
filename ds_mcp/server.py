@@ -1,12 +1,14 @@
 """Main server module for the Data Science MCP server."""
 
+import sys
 from typing import Dict, Any, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from loguru import logger
 from pydantic import BaseModel, Field
+from fastapi.responses import StreamingResponse
 
 from ds_mcp.core.config import settings
 from ds_mcp.routers import (
@@ -83,6 +85,7 @@ class MCPInitResponse(BaseModel):
 @app.post("/mcp", tags=["MCP"])
 async def mcp_init(request: MCPInitRequest) -> MCPInitResponse:
     """MCP initialization endpoint."""
+    logger.info(f"MCP initialization called with request: {request}")
     logger.info(
         f"MCP initialization request from client version: {request.clientVersion}"
     )
@@ -127,6 +130,11 @@ async def mcp_init(request: MCPInitRequest) -> MCPInitResponse:
                         "description": "Programming language for examples",
                         "default": "python",
                     },
+                    "context": {
+                        "type": "string",
+                        "description": "Additional context about the task",
+                        "default": "",
+                    },
                 },
             },
             {
@@ -140,6 +148,16 @@ async def mcp_init(request: MCPInitRequest) -> MCPInitResponse:
                     "task_type": {
                         "type": "string",
                         "description": "Type of ML task (e.g., classification, regression, clustering)",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "Programming language for examples",
+                        "default": "python",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Additional context about the task",
+                        "default": "",
                     },
                 },
             },
@@ -155,6 +173,26 @@ async def mcp_init(request: MCPInitRequest) -> MCPInitResponse:
                         "type": "string",
                         "description": "Type of data (tabular, text, image, time-series)",
                         "default": "tabular",
+                    },
+                    "data_size": {
+                        "type": "string",
+                        "description": "Size of the data (small, medium, large)",
+                        "default": "medium",
+                    },
+                    "constraints": {
+                        "type": "string",
+                        "description": "Constraints for the model (e.g., interpretability, explainability)",
+                        "default": "",
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "Programming language for examples",
+                        "default": "python",
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Additional context about the task",
+                        "default": "",
                     },
                 },
             },
@@ -190,6 +228,7 @@ class MCPRunResponse(BaseModel):
 @app.post("/mcp/run", tags=["MCP"])
 async def mcp_run(request: MCPRunRequest) -> MCPRunResponse:
     """MCP tool execution endpoint."""
+    logger.info(f"MCP tool execution called with request: {request}")
     logger.info(f"MCP tool execution request: {request.toolName}")
 
     result = {"error": f"Tool {request.toolName} not implemented yet"}
@@ -200,69 +239,144 @@ async def mcp_run(request: MCPRunRequest) -> MCPRunResponse:
         data_type = request.parameters.get("data_type", "tabular")
         context = request.parameters.get("context", None)
 
+        logger.info(
+            f"Processing MCP workflow guidance request: task_description='{task_description}', data_type='{data_type}'"
+        )
+
         # Create a request object for our existing endpoint
         from ds_mcp.routers.workflow import WorkflowRequest
 
-        req = WorkflowRequest(
+        workflow_request = WorkflowRequest(
             task_description=task_description, data_type=data_type, context=context
         )
 
         # Call our existing endpoint logic
         from ds_mcp.routers.workflow import get_workflow_guidance
 
-        result = await get_workflow_guidance(req)
+        result = await get_workflow_guidance(workflow_request)
+        logger.info("MCP workflow guidance request completed successfully")
 
     elif request.toolName == "get-data-prep-guidance":
         # Convert parameters to match our router endpoint
         data_type = request.parameters.get("data_type", "tabular")
         language = request.parameters.get("language", "python")
-
+        context = request.parameters.get("context", None)
+        logger.info(
+            f"Processing MCP data prep guidance request: data_type='{data_type}', language='{language}', context='{context}'"
+        )
         # Create a request object for our existing endpoint
         from ds_mcp.routers.data_prep import DataCleaningRequest
 
-        req = DataCleaningRequest(data_type=data_type, language=language)
-
+        data_prep_request = DataCleaningRequest(
+            data_type=data_type, language=language, context=context
+        )
         # Call our existing endpoint logic
         from ds_mcp.routers.data_prep import get_data_cleaning_guidance
 
-        result = await get_data_cleaning_guidance(req)
+        result = await get_data_cleaning_guidance(data_prep_request)
+        logger.info("MCP data prep guidance request completed successfully")
 
     elif request.toolName == "get-feature-engineering-guidance":
         data_type = request.parameters.get("data_type", "tabular")
         task_type = request.parameters.get("task_type", "classification")
-
+        language = request.parameters.get("language", "python")
+        context = request.parameters.get("context", None)
+        logger.info(
+            f"Processing MCP feature engineering guidance request: data_type='{data_type}', task_type='{task_type}', language='{language}', context='{context}'"
+        )
+        # Create a request object for our existing endpoint
         from ds_mcp.routers.feature_engineering import FeatureEngineeringRequest
 
-        req = FeatureEngineeringRequest(data_type=data_type, task_type=task_type)
-
+        feature_request = FeatureEngineeringRequest(
+            data_type=data_type, task_type=task_type, language=language, context=context
+        )
+        # Call our existing endpoint logic
         from ds_mcp.routers.feature_engineering import get_feature_engineering_guidance
 
-        result = await get_feature_engineering_guidance(req)
+        result = await get_feature_engineering_guidance(feature_request)
+        logger.info("MCP feature engineering guidance request completed successfully")
 
     elif request.toolName == "get-modeling-recommendations":
         task_type = request.parameters.get("task_type", "classification")
         data_type = request.parameters.get("data_type", "tabular")
-
+        data_size = request.parameters.get("data_size", "medium")
+        constraints = request.parameters.get("constraints", None)
+        language = request.parameters.get("language", "python")
+        context = request.parameters.get("context", None)
+        logger.info(
+            f"Processing MCP modeling recommendations request: task_type='{task_type}', data_type='{data_type}', data_size='{data_size}', constraints='{constraints}', language='{language}', context='{context}'"
+        )
+        # Create a request object for our existing endpoint
         from ds_mcp.routers.modeling import ModelingRequest
 
-        req = ModelingRequest(task_type=task_type, data_type=data_type)
-
+        modeling_request = ModelingRequest(
+            task_type=task_type,
+            data_type=data_type,
+            data_size=data_size,
+            constraints=constraints,
+            language=language,
+            context=context,
+        )
+        # Call our existing endpoint logic
         from ds_mcp.routers.modeling import get_modeling_recommendations
 
-        result = await get_modeling_recommendations(req)
+        result = await get_modeling_recommendations(modeling_request)
+        logger.info("MCP modeling recommendations request completed successfully")
 
     elif request.toolName == "get-evaluation-guidance":
         task_type = request.parameters.get("task_type", "classification")
 
+        logger.info(
+            f"Processing MCP evaluation guidance request: task_type='{task_type}'"
+        )
+
+        # Create a request object for our existing endpoint
         from ds_mcp.routers.evaluation import EvaluationRequest
 
-        req = EvaluationRequest(task_type=task_type)
+        eval_request = EvaluationRequest(task_type=task_type)
 
+        # Call our existing endpoint logic
         from ds_mcp.routers.evaluation import get_evaluation_guidance
 
-        result = await get_evaluation_guidance(req)
+        result = await get_evaluation_guidance(eval_request)
+        logger.info("MCP evaluation guidance request completed successfully")
+
+    else:
+        logger.warning(f"MCP tool execution failed: Unknown tool {request.toolName}")
 
     return MCPRunResponse(result=result)
+
+
+@app.get("/", tags=["Root"])
+async def root(request: Request):
+    # If client requests SSE, respond with a minimal event stream
+    if request.headers.get("accept") == "text/event-stream":
+
+        async def event_generator():
+            yield "data: ok\n\n"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return {"status": "ok", "message": "Data Science MCP server is running"}
+
+
+@app.get("/mcp", tags=["MCP"])
+async def mcp_get_probe():
+    return {"status": "ok", "message": "MCP endpoint is ready"}
+
+
+@app.middleware("http")
+async def log_all_requests(request, call_next):
+    # Log all incoming requests with method, url, and headers
+    logger.info(
+        f"Incoming request: {request.method} {request.url} headers={dict(request.headers)}"
+    )
+    sys.stdout.flush()
+    response = await call_next(request)
+    logger.info(
+        f"Response status: {response.status_code} for {request.method} {request.url}"
+    )
+    sys.stdout.flush()
+    return response
 
 
 # Custom OpenAPI schema
