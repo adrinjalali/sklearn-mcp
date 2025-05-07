@@ -11,13 +11,7 @@ from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 
 from ds_mcp.core.config import settings
-from ds_mcp.routers import (
-    data_prep,
-    feature_engineering,
-    modeling,
-    evaluation,
-    workflow,
-)
+from ds_mcp.routers.workflow import workflow
 
 
 # Initialize FastAPI app
@@ -37,17 +31,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(
-    data_prep.router, prefix="/api/data-preparation", tags=["Data Preparation"]
-)
-app.include_router(
-    feature_engineering.router,
-    prefix="/api/feature-engineering",
-    tags=["Feature Engineering"],
-)
-app.include_router(modeling.router, prefix="/api/modeling", tags=["Modeling"])
-app.include_router(evaluation.router, prefix="/api/evaluation", tags=["Evaluation"])
-app.include_router(workflow.router, prefix="/api/workflow", tags=["Workflow"])
+app.include_router(workflow, prefix="/api/workflow", tags=["Workflow"])
 
 
 class HealthResponse(BaseModel):
@@ -117,95 +101,6 @@ async def mcp_init(request: MCPInitRequest) -> MCPInitResponse:
                     },
                 },
             },
-            {
-                "name": "get-data-prep-guidance",
-                "description": "Get guidance on data preparation best practices",
-                "parameters": {
-                    "data_type": {
-                        "type": "string",
-                        "description": "Type of data (e.g., tabular, text, image)",
-                    },
-                    "language": {
-                        "type": "string",
-                        "description": "Programming language for examples",
-                        "default": "python",
-                    },
-                    "context": {
-                        "type": "string",
-                        "description": "Additional context about the task",
-                        "default": "",
-                    },
-                },
-            },
-            {
-                "name": "get-feature-engineering-guidance",
-                "description": "Get guidance on feature engineering techniques",
-                "parameters": {
-                    "data_type": {
-                        "type": "string",
-                        "description": "Type of data (e.g., tabular, text, image)",
-                    },
-                    "task_type": {
-                        "type": "string",
-                        "description": "Type of ML task (e.g., classification, regression, clustering)",
-                    },
-                    "language": {
-                        "type": "string",
-                        "description": "Programming language for examples",
-                        "default": "python",
-                    },
-                    "context": {
-                        "type": "string",
-                        "description": "Additional context about the task",
-                        "default": "",
-                    },
-                },
-            },
-            {
-                "name": "get-modeling-recommendations",
-                "description": "Get recommendations for ML models",
-                "parameters": {
-                    "task_type": {
-                        "type": "string",
-                        "description": "Type of ML task (e.g., classification, regression, clustering)",
-                    },
-                    "data_type": {
-                        "type": "string",
-                        "description": "Type of data (tabular, text, image, time-series)",
-                        "default": "tabular",
-                    },
-                    "data_size": {
-                        "type": "string",
-                        "description": "Size of the data (small, medium, large)",
-                        "default": "medium",
-                    },
-                    "constraints": {
-                        "type": "string",
-                        "description": "Constraints for the model (e.g., interpretability, explainability)",
-                        "default": "",
-                    },
-                    "language": {
-                        "type": "string",
-                        "description": "Programming language for examples",
-                        "default": "python",
-                    },
-                    "context": {
-                        "type": "string",
-                        "description": "Additional context about the task",
-                        "default": "",
-                    },
-                },
-            },
-            {
-                "name": "get-evaluation-guidance",
-                "description": "Get guidance on evaluation metrics",
-                "parameters": {
-                    "task_type": {
-                        "type": "string",
-                        "description": "Type of ML task (e.g., classification, regression, clustering)",
-                    }
-                },
-            },
         ],
     )
 
@@ -255,94 +150,6 @@ async def mcp_run(request: MCPRunRequest) -> MCPRunResponse:
 
         result = await get_workflow_guidance(workflow_request)
         logger.info("MCP workflow guidance request completed successfully")
-
-    elif request.toolName == "get-data-prep-guidance":
-        # Convert parameters to match our router endpoint
-        data_type = request.parameters.get("data_type", "tabular")
-        language = request.parameters.get("language", "python")
-        context = request.parameters.get("context", None)
-        logger.info(
-            f"Processing MCP data prep guidance request: data_type='{data_type}', language='{language}', context='{context}'"
-        )
-        # Create a request object for our existing endpoint
-        from ds_mcp.routers.data_prep import DataCleaningRequest
-
-        data_prep_request = DataCleaningRequest(
-            data_type=data_type, language=language, context=context
-        )
-        # Call our existing endpoint logic
-        from ds_mcp.routers.data_prep import get_data_cleaning_guidance
-
-        result = await get_data_cleaning_guidance(data_prep_request)
-        logger.info("MCP data prep guidance request completed successfully")
-
-    elif request.toolName == "get-feature-engineering-guidance":
-        data_type = request.parameters.get("data_type", "tabular")
-        task_type = request.parameters.get("task_type", "classification")
-        language = request.parameters.get("language", "python")
-        context = request.parameters.get("context", None)
-        logger.info(
-            f"Processing MCP feature engineering guidance request: data_type='{data_type}', task_type='{task_type}', language='{language}', context='{context}'"
-        )
-        # Create a request object for our existing endpoint
-        from ds_mcp.routers.feature_engineering import FeatureEngineeringRequest
-
-        feature_request = FeatureEngineeringRequest(
-            data_type=data_type, task_type=task_type, language=language, context=context
-        )
-        # Call our existing endpoint logic
-        from ds_mcp.routers.feature_engineering import get_feature_engineering_guidance
-
-        result = await get_feature_engineering_guidance(feature_request)
-        logger.info("MCP feature engineering guidance request completed successfully")
-
-    elif request.toolName == "get-modeling-recommendations":
-        task_type = request.parameters.get("task_type", "classification")
-        data_type = request.parameters.get("data_type", "tabular")
-        data_size = request.parameters.get("data_size", "medium")
-        constraints = request.parameters.get("constraints", None)
-        language = request.parameters.get("language", "python")
-        context = request.parameters.get("context", None)
-        logger.info(
-            f"Processing MCP modeling recommendations request: task_type='{task_type}', data_type='{data_type}', data_size='{data_size}', constraints='{constraints}', language='{language}', context='{context}'"
-        )
-        # Create a request object for our existing endpoint
-        from ds_mcp.routers.modeling import ModelingRequest
-
-        modeling_request = ModelingRequest(
-            task_type=task_type,
-            data_type=data_type,
-            data_size=data_size,
-            constraints=constraints,
-            language=language,
-            context=context,
-        )
-        # Call our existing endpoint logic
-        from ds_mcp.routers.modeling import get_modeling_recommendations
-
-        result = await get_modeling_recommendations(modeling_request)
-        logger.info("MCP modeling recommendations request completed successfully")
-
-    elif request.toolName == "get-evaluation-guidance":
-        task_type = request.parameters.get("task_type", "classification")
-
-        logger.info(
-            f"Processing MCP evaluation guidance request: task_type='{task_type}'"
-        )
-
-        # Create a request object for our existing endpoint
-        from ds_mcp.routers.evaluation import EvaluationRequest
-
-        eval_request = EvaluationRequest(task_type=task_type)
-
-        # Call our existing endpoint logic
-        from ds_mcp.routers.evaluation import get_evaluation_guidance
-
-        result = await get_evaluation_guidance(eval_request)
-        logger.info("MCP evaluation guidance request completed successfully")
-
-    else:
-        logger.warning(f"MCP tool execution failed: Unknown tool {request.toolName}")
 
     return MCPRunResponse(result=result)
 

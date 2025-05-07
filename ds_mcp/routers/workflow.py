@@ -5,7 +5,9 @@ from typing import Dict, List, Optional, Any
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-router = APIRouter()
+# Expose as 'workflow' for server.py compatibility
+workflow_router = APIRouter()
+workflow = workflow_router
 
 
 class WorkflowRequest(BaseModel):
@@ -52,7 +54,7 @@ class WorkflowResponse(BaseModel):
     )
 
 
-@router.post("/guidance", response_model=WorkflowResponse)
+@workflow_router.post("/guidance", response_model=WorkflowResponse)
 async def get_workflow_guidance(request: WorkflowRequest) -> Dict[str, Any]:
     """Get guidance on data science workflow best practices.
 
