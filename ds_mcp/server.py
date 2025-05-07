@@ -156,19 +156,139 @@ async def mcp_run(request: MCPRunRequest) -> MCPRunResponse:
 
 @app.get("/", tags=["Root"])
 async def root(request: Request):
-    # If client requests SSE, respond with a minimal event stream
-    if request.headers.get("accept") == "text/event-stream":
+    # If client requests SSE, respond with a persistent event stream (heartbeat)
+    accept_header = request.headers.get("accept", "").lower()
+    if "text/event-stream" in accept_header:
+        import asyncio
+        import json
+
+        # Set up the global message queue
+        global mcp_message_queue
+        mcp_message_queue = asyncio.Queue()
+
+        logger.info("MCP SSE connection established")
 
         async def event_generator():
-            yield "data: ok\n\n"
+            # Send an initial MCP protocol initialization response
+            init_response = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "serverInfo": {
+                        "name": "Data Science MCP Server",
+                        "version": "0.1.0",
+                        "description": "MCP server for data science best practices",
+                    },
+                    "capabilities": {
+                        "tools": [
+                            {
+                                "name": "get-workflow-guidance",
+                                "description": "Get guidance on best practices of writing a data science / machine learning task",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {
+                                        "task_description": {
+                                            "type": "string",
+                                            "description": "Description of the data science task",
+                                        },
+                                        "data_type": {
+                                            "type": "string",
+                                            "description": "Type of data (e.g., tabular, text, image)",
+                                            "default": "tabular",
+                                        },
+                                        "context": {
+                                            "type": "string",
+                                            "description": "Additional context about the task",
+                                            "default": "",
+                                        },
+                                    },
+                                    "required": ["task_description"],
+                                },
+                            }
+                        ]
+                    },
+                },
+            }
+
+            logger.info(f"Sending MCP initialization response: {init_response}")
+
+            # Send the initialization response as an SSE event
+            yield f"data: {json.dumps(init_response)}\n\n"
+
+            # Process messages from the queue and send heartbeats
+            while True:
+                try:
+                    # Try to get a message from the queue with a timeout
+                    message = await asyncio.wait_for(mcp_message_queue.get(), timeout=5)
+                    logger.info(f"Sending message to client: {message}")
+                    # Send the message as an SSE event
+                    yield f"data: {json.dumps(message)}\n\n"
+                except asyncio.TimeoutError:
+                    # If no message is available, send a heartbeat
+                    yield ": keep-alive\n\n"
 
         return StreamingResponse(event_generator(), media_type="text/event-stream")
+
     return {"status": "ok", "message": "Data Science MCP server is running"}
+
+
+# Global message queue for MCP communication
+mcp_message_queue = None
 
 
 @app.get("/mcp", tags=["MCP"])
 async def mcp_get_probe():
     return {"status": "ok", "message": "MCP endpoint is ready"}
+
+
+@app.post("/mcp-message", tags=["MCP"])
+async def handle_mcp_message(request: Request):
+    global mcp_message_queue
+
+    if mcp_message_queue is None:
+        return {"error": "No active MCP connection"}
+
+    data = await request.json()
+    logger.info(f"Received MCP message: {data}")
+
+    # Process the message based on JSON-RPC method
+    if data.get("method") == "invoke":
+        request_id = data.get("id")
+        params = data.get("params", {})
+        tool_name = params.get("name")
+        parameters = params.get("parameters", {})
+
+        result = {"error": f"Tool {tool_name} not implemented yet"}
+
+        if tool_name == "get-workflow-guidance":
+            # Convert parameters to match our router endpoint
+            task_description = parameters.get("task_description", "")
+            data_type = parameters.get("data_type", "tabular")
+            context = parameters.get("context", None)
+
+            logger.info(
+                f"Processing MCP workflow guidance request: task_description='{task_description}', data_type='{data_type}'"
+            )
+
+            # Create a request object for our existing endpoint
+            from ds_mcp.routers.workflow import WorkflowRequest
+
+            workflow_request = WorkflowRequest(
+                task_description=task_description, data_type=data_type, context=context
+            )
+
+            # Call our existing endpoint logic
+            from ds_mcp.routers.workflow import get_workflow_guidance
+
+            result = await get_workflow_guidance(workflow_request)
+            logger.info("MCP workflow guidance request completed successfully")
+
+        # Send the result back in JSON-RPC format
+        response = {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+        await mcp_message_queue.put(response)
+
+    return {"status": "ok"}
 
 
 @app.middleware("http")
@@ -244,12 +364,12 @@ if __name__ == "__main__":
     )
 
     print("\n🔹 VS CODE Integration:")
-    print("Add to your VS Code MCP config file:")
+    print("Add to your VS Code MCP config file (.vscode/mcp.json):")
     print(
         f"""{{
   "servers": {{
     "DS-MCP": {{
-      "type": "http",
+      "type": "sse",
       "url": "{server_url}"
     }}
   }}
