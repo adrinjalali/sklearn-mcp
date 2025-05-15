@@ -8,6 +8,7 @@ platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
 
 [tasks]
 serve = "python -m ds_mcp.server"
+mcp-server = "python -m ds_mcp.server"
 test = "pytest"
 lint = "pre-commit run --all-files"
 

@@ -1,68 +1,31 @@
 """Router for general data science workflow guidance."""
 
-from typing import Dict, List, Optional, Any
-
-from fastapi import APIRouter
-from pydantic import BaseModel, Field
-
-# Expose as 'workflow' for server.py compatibility
-workflow_router = APIRouter()
-workflow = workflow_router
+from typing import Any
+from typing import Dict
 
 
-class WorkflowRequest(BaseModel):
-    """Request model for data science workflow guidance."""
-
-    task_description: str = Field(
-        ..., description="Description of the data science task"
-    )
-    data_type: Optional[str] = Field(
-        default="tabular", description="Type of data (e.g., tabular, text, image)"
-    )
-    context: Optional[str] = Field(
-        default=None, description="Additional context about the task"
-    )
-
-
-class WorkflowStage(BaseModel):
-    """Model for a workflow stage."""
-
-    name: str = Field(..., description="Name of the workflow stage")
-    description: str = Field(..., description="Description of the stage")
-    best_practices: List[str] = Field(..., description="Best practices for this stage")
-    code_example: Optional[str] = Field(
-        default=None, description="Example code for this stage"
-    )
-    common_pitfalls: Optional[List[str]] = Field(
-        default=None, description="Common pitfalls to avoid"
-    )
-
-
-class WorkflowResponse(BaseModel):
-    """Response model for data science workflow guidance."""
-
-    overview: str = Field(..., description="General overview of the workflow")
-    workflow_stages: List[WorkflowStage] = Field(
-        ..., description="List of workflow stages with best practices"
-    )
-    libraries: List[str] = Field(..., description="Recommended libraries to use")
-    project_structure: Optional[Dict[str, str]] = Field(
-        default=None, description="Recommended project structure"
-    )
-    additional_resources: Optional[List[str]] = Field(
-        default=None, description="Additional resources for learning"
-    )
-
-
-@workflow_router.post("/guidance", response_model=WorkflowResponse)
-async def get_workflow_guidance(request: WorkflowRequest) -> Dict[str, Any]:
+async def get_workflow_guidance(
+    task_description: str, data_type: str = "tabular", context: str = None
+) -> Dict[str, Any]:
     """Get guidance on data science workflow best practices.
 
     Args:
-        request: The workflow guidance request
+        task_description (str):
+            A short natural language description of the data science or ML task (e.g.,
+            'binary classification', 'time series forecasting', 'image segmentation',
+            'recommendation system'). This should specify the main goal or problem type.
+        data_type (str, optional):
+            The type of data being used. Common values: 'tabular', 'text', 'image',
+            'time series', etc. Defaults to 'tabular'.
+        context (str, optional):
+            Additional context, constraints, or details relevant to the task. This may
+            include dataset characteristics, business requirements, performance
+            constraints, or any other information that could influence workflow
+            recommendations.
 
     Returns:
-        Dict containing workflow stages, best practices, and recommended libraries
+        dict: A dictionary containing workflow stages, best practices, recommended
+        libraries, and common pitfalls for the specified task and data type.
     """
     # Example response for general data science workflow
     return {
@@ -199,6 +162,8 @@ async def get_workflow_guidance(request: WorkflowRequest) -> Dict[str, Any]:
         "libraries": [
             "polars",
             "scikit-learn",
+            "skrub",
+            "skops",
             "matplotlib",
             "seaborn",
             "numpy",
@@ -215,7 +180,9 @@ async def get_workflow_guidance(request: WorkflowRequest) -> Dict[str, Any]:
             "tests/": "Tests for the codebase",
         },
         "additional_resources": [
-            "https://scikit-learn.org/stable/user_guide.html",
+            "https://skrub-data.org/stable/",
+            "https://skops.readthedocs.io/en/latest/",
+            "https://scikit-learn.org/stable/index.html",
             "https://pola.rs/",
             "https://pandas.pydata.org/docs/user_guide/index.html",
             "https://matplotlib.org/stable/tutorials/index.html",
