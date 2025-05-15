@@ -41,8 +41,7 @@ async def get_workflow_guidance_tool(
             recommendations.
 
     Returns:
-        dict: A dictionary containing workflow stages, best practices, recommended
-        libraries, and common pitfalls for the specified task and data type.
+        str: Markdown content with workflow guidance.
 
     When to use this tool:
         - When you need up-to-date, structured, and actionable advice for planning,
