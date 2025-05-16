@@ -32,65 +32,12 @@ pixi install
 3. Run the server:
 
 ```bash
-pixi run serve
+pixi run mcp-server
 ```
 
 ### Integrate with your AI Code Editor
 
-#### Option 1: Connect to a Running MCP Server
-
-If you already have the DS-MCP server running (on the default port 8000), you can configure your code editor to connect to it directly:
-
-##### Install in Windsurf
-
-Add this to your Windsurf MCP config file:
-
-```json
-{
-  "mcpServers": {
-    "ds-mcp": {
-      "uri": "http://localhost:8000"
-    }
-  }
-}
-```
-
-##### Install in Cursor
-
-Go to: Settings -> Cursor Settings -> MCP -> Add new global MCP server
-
-Paste the following configuration into your Cursor `~/.cursor/mcp.json` file:
-
-```json
-{
-  "mcpServers": {
-    "ds-mcp": {
-      "uri": "http://localhost:8000"
-    }
-  }
-}
-```
-
-##### Install in VS Code
-
-Add this to your VS Code MCP config file:
-
-```json
-{
-  "servers": {
-    "DS-MCP": {
-      "type": "http",
-      "url": "http://localhost:8000"
-    }
-  }
-}
-```
-
-#### Option 2: Let the IDE Start the MCP Server
-
-Alternatively, you can configure your IDE to start the MCP server when needed:
-
-##### Install in Windsurf
+#### Install in Windsurf
 
 Add this to your Windsurf MCP config file:
 
@@ -99,54 +46,12 @@ Add this to your Windsurf MCP config file:
   "mcpServers": {
     "ds-mcp": {
       "command": "pixi",
-      "args": ["run", "serve"],
-      "cwd": "/path/to/ds-agent/ds-mcp"
+      "args": [
+        "run",
+        "--manifest-path",
+        "/path/to/ds-agent/ds-mcp/pixi.toml",
+        "mcp-server"
+      ]
     }
   }
-}
-```
-
-##### Install in Cursor
-
-Go to: Settings -> Cursor Settings -> MCP -> Add new global MCP server
-
-Paste the following configuration into your Cursor `~/.cursor/mcp.json` file:
-
-```json
-{
-  "mcpServers": {
-    "ds-mcp": {
-      "command": "pixi",
-      "args": ["run", "serve"],
-      "cwd": "/path/to/ds-agent/ds-mcp"
-    }
-  }
-}
-```
-
-##### Install in VS Code
-
-Add this to your VS Code MCP config file:
-
-```json
-{
-  "servers": {
-    "DS-MCP": {
-      "type": "stdio",
-      "command": "pixi",
-      "args": ["run", "serve"],
-      "cwd": "/path/to/ds-agent/ds-mcp"
-    }
-  }
-}
-```
-
-Replace `/path/to/ds-agent/ds-mcp` with the actual path to this project on your system.
-
-## API Endpoints
-
-Documentation for the API endpoints is available at `/docs` when the server is running.
-
-## Development
-
-To contribute to this project, please follow the guidelines in the CONTRIBUTING.md file.
+}```
