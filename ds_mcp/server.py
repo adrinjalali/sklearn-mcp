@@ -3,6 +3,7 @@
 import sys
 from mcp.server.fastmcp import FastMCP
 from ds_mcp.routers.workflow import get_workflow_guidance
+from ds_mcp.routers.python_general import get_python_general_guidelines
 
 # Create the MCP server
 mcp = FastMCP("Data Science MCP Server")
@@ -52,6 +53,16 @@ async def get_workflow_guidance_tool(
           pipeline, or when troubleshooting workflow design issues.
     """
     return await get_workflow_guidance(task_description, data_type, context)
+
+
+@mcp.tool(description="Get general Python project guidelines for agent projects")
+async def get_python_general_guidelines_tool():
+    """
+    Get general Python guidelines for agent projects.
+
+    This tool returns best practices and conventions for Python projects intended for agent-based systems, as Markdown.
+    """
+    return await get_python_general_guidelines()
 
 
 if __name__ == "__main__":
