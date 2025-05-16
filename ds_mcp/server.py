@@ -2,14 +2,20 @@
 
 import sys
 from mcp.server.fastmcp import FastMCP
-from ds_mcp.routers.workflow import get_workflow_guidance
-from ds_mcp.routers.python_general import get_python_general_guidelines
+import os
 
 # Create the MCP server
 mcp = FastMCP("Data Science MCP Server")
 
 
-@mcp.tool(description="Get guidance on best practices for a data science/ML task")
+def read_markdown(filename: str) -> str:
+    """Utility to read a markdown file from the routers directory."""
+    path = os.path.join(os.path.dirname(__file__), "routers", filename)
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@mcp.tool()
 async def get_workflow_guidance_tool(
     task_description: str, data_type: str = "tabular", context: str = None
 ):
@@ -52,17 +58,21 @@ async def get_workflow_guidance_tool(
         - Use this tool before starting a new workflow, when reviewing an existing
           pipeline, or when troubleshooting workflow design issues.
     """
-    return await get_workflow_guidance(task_description, data_type, context)
+    # The markdown file is static and not parametrized by the arguments
+    return read_markdown("workflow_guidance.md")
 
 
 @mcp.tool(description="Get general Python project guidelines for agent projects")
 async def get_python_general_guidelines_tool():
     """
-    Get general Python guidelines for agent projects.
+    Get general Python guidelines..
 
-    This tool returns best practices and conventions for Python projects intended for agent-based systems, as Markdown.
+    This tool returns best practices and conventions for Python projects as Markdown.
+
+    The guidelines include how to setup environment, and generally how to approach
+    a Python project.
     """
-    return await get_python_general_guidelines()
+    return read_markdown("python_general.md")
 
 
 if __name__ == "__main__":
